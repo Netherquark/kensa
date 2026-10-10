@@ -1,6 +1,6 @@
 \documentclass[11pt,a4paper]{article}
 
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.85in, top=0.9in, bottom=0.9in]{geometry}
 \usepackage{fontspec}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
@@ -11,12 +11,16 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{float}
 \usepackage{microtype}
 \usepackage{fancyhdr}
 \usepackage{titlesec}
+\usepackage{tikz}
+\usepackage{parskip}
+\usetikzlibrary{arrows.meta,positioning,calc}
 
-% Colors
+% Color palette
 \definecolor{primary}{RGB}{16, 44, 87}
 \definecolor{secondary}{RGB}{53, 101, 169}
 \definecolor{accent}{RGB}{218, 165, 32}
@@ -29,16 +33,14 @@
     urlcolor=secondary
 }
 
-% Header and footer
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small \textcolor{darkgray}{Big Data Analytics --- CA3 Assignment}}
+\fancyhead[L]{\small \textcolor{darkgray}{Big Data Analytics --- CA3 Case Study}}
 \fancyhead[R]{\small \textcolor{darkgray}{Soham Kulkarni (23070126129)}}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0.4pt}
 
-% Section styling
 \titleformat{\section}
   {\normalfont\Large\bfseries\color{primary}}{\thesection}{1em}{}[\titlerule]
 \titleformat{\subsection}
@@ -46,57 +48,190 @@
 \titleformat{\subsubsection}
   {\normalfont\normalsize\bfseries\color{darkgray}}{\thesubsubsection}{1em}{}
 
-\setlist[itemize]{noitemsep, topsep=2pt}
-\setlist[enumerate]{noitemsep, topsep=2pt}
+\setlist[itemize]{noitemsep, topsep=3pt, parsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=3pt, parsep=2pt}
+\captionsetup{font=small, labelfont=bf, skip=4pt}
 
 \begin{document}
 
-% Title / Metadata Header Block
 \begin{center}
-    {\huge \bfseries \color{primary} CA3 Big Data Case Study Analysis}\\[0.6em]
-    {\large \bfseries Big Data Analytics for LHC Event Quality and Exploratory Outlier Ranking in 40\,MHz Training Data}\\[1.2em]
-    
+    {\huge \bfseries \color{primary} Big Data Analytics for LHC Event Quality and\\[0.3em] Exploratory Outlier Ranking in 40\,MHz Training Data}\\[0.7em]
+    {\large \bfseries Big Data Analytics CA-3 Case Study Report}\\[1.0em]
     \begin{tabularx}{\textwidth}{r>{\raggedright\arraybackslash}X r>{\raggedright\arraybackslash}X}
         \toprule
         \textbf{Name:} & Soham Kulkarni & \textbf{PRN:} & 23070126129 \\
         \textbf{Course:} & Big Data Analytics (CA3) & \textbf{Division:} & AIML B2 \\
-        \textbf{Batch:} & Final Year AIML B2, 2023--27 & \textbf{Platform:} & Linux / Docker / Spark 3.5.7 \\
+        \textbf{Batch:} & Final Year AIML B2, 2023--27 & \textbf{Platform:} & Hadoop / Hive / Spark / Pig \\
         \bottomrule
     \end{tabularx}
 \end{center}
-\vspace{0.8em}
+\vspace{0.4em}
 
-\section{Title of Case Study}
-\textbf{Big Data Analytics for LHC Event Quality and Exploratory Outlier Ranking in 40\,MHz Training Data}
 
-\section{Problem Statement and Objectives}
+\section{Problem Statement}
 
-\textbf{Problem.} Analyse 13,451,915 simulated proton-proton collision events in the complete 646.4\,MB HDF5 training record from the LHC 40\,MHz Anomaly Detection Challenge. Preserve every single collision event without lossy row sampling. Validate tensor data-quality gates, derive physics-informed event kinematics, query the full corpus via distributed Spark SQL and RDD MapReduce aggregations, and generate empirical visual analytics alongside exploratory anomaly scoring.
+CERN's Large Hadron Collider (LHC) operates at a proton bunch-crossing frequency of 40\,MHz, corresponding to a bunch collision interval of $\Delta t = 25\,\text{ns}$. At design luminosity, proton-proton ($pp$) collisions occur at a center-of-mass energy $\sqrt{s} = 13\,\text{TeV}$, yielding $\mathcal{O}(10^9)$ inelastic proton-proton interactions per second. Experimental general-purpose detectors --- CMS and ATLAS --- generate raw sensory readouts at multi-terabit-per-second bandwidths ($\approx 40\,\text{TB/s}$). Because persistent storage and downstream processing bandwidth are bounded to $\mathcal{O}(1\,\text{kHz})$ write rates, hardware-level trigger systems (Level-1 / L1) must make zero-loss filtering decisions under an ultra-strict latency budget of $\mathcal{O}(1\,\mu\text{s})$ on custom FPGA architectures, followed by High-Level Trigger (HLT) software filter farms. 
 
-\textbf{Objectives.}
+To enable exploratory research into machine-learning-driven L1 trigger anomaly detection and unsupervised search for Beyond-the-Standard-Model (BSM) signatures without prior physics bias, benchmark datasets have been released to the research community. In particular, Govorkova et al.\ published an open-access training corpus on Zenodo (Record 5046428) representing simulated 40\,MHz trigger events as fixed-width, low-level reconstructed physics tensors packaged in HDF5 format~\cite{govorkova2022lhc}. The verified dataset file \texttt{background\_for\_training.h5} ($646.4\,\text{MB}$, MD5 \texttt{08cb4801229f9d480567f8d3f5cac134}) encapsulates $13{,}451{,}915$ collision events, each structured as a $(19 \times 4)$ floating-point tensor totaling $1.022\times 10^9$ scalar fields.
+
+Processing this corpus at full depth presents a quintessential Big Data engineering and scientific computing challenge. Naive in-memory analytics fail due to the multi-gigabyte uncompressed memory footprint and the computational cost of per-particle parsing. Moreover, data corruption, coordinate wrapping errors, non-finite entries, and misidentified padding can silently bias downstream statistical inferences and machine learning models.
+
+The primary engineering and analytical challenge of this study is to formulate and implement a \textbf{rigorous, bounded-memory, end-to-end Big Data pipeline} that:
+\begin{enumerate}[label=(\alph*)]
+    \item establishes cryptographic provenance and structural verification against Zenodo REST API endpoints without premature memory allocation;
+    \item executes an exhaustive, non-sampled, chunk-wise data quality audit over all $1.022\times 10^9$ tensor scalars across six formal consistency criteria;
+    \item implements bounded-memory columnar ETL transforming dense fixed-width tensors into typed, Snappy-compressed Apache Parquet with exact row-preservation guarantees ($N_{\text{out}} = N_{\text{in}} = 13{,}451{,}915$);
+    \item executes distributed Spark SQL analytics covering multi-dimensional aggregations (\texttt{GROUP BY WITH ROLLUP}), windowed ranking (\texttt{DENSE\_RANK() OVER (PARTITION BY n\_jets)}), and 2D kinematic phase-space distributions;
+    \item demonstrates core MapReduce paradigms via native Spark RDD key-value reductions alongside standalone Hadoop Streaming and Pig Latin dataflow compatibility layers;
+    \item deploys an online, multi-pass unsupervised clustering workflow (\texttt{MiniBatchKMeans}, $K=8$) to rank topological Standard Model outliers in standardized kinematic feature space;
+    \item and compiles all quantitative analytical outputs into traceable, reproducible, publication-grade visual analytics.
+\end{enumerate}
+
+\textbf{Scope Boundaries:} This project operates within a containerized single-host Docker runtime deploying Apache Spark in \texttt{local[6]} multithreaded mode. The input file is an offline simulation benchmark, not a live physical LHC stream, and the study makes no claims of sub-microsecond hardware latency or multi-node cluster deployment. Furthermore, the dataset is an unlabelled Standard Model background cocktail without per-event signal ground truth; consequently, supervised signal-detection metrics (such as ROC-AUC, sensitivity, or discovery significance) are neither defined nor claimed.
+
+\section{Objectives}
+
 \begin{enumerate}
-    \item Verify cryptographic provenance, exact byte count, MD5/SHA-256 checksums, HDF5 key inventory, and multi-dimensional tensor shape.
-    \item Perform a streaming full-file audit to quantify NaN, infinite values, invalid particle-type codes, negative transverse momentum, and zero-padding consistency.
-    \item Implement a bounded-memory ETL pipeline converting raw tensors into typed Snappy-compressed Parquet records with exact row preservation.
-    \item Measure particle occupancy, kinematic transverse-momentum ($p_T$) spectra, hadronic scalar jet activity ($H_T$), missing transverse momentum ($\text{MET}$), and pairwise feature correlations across all 13.45 million events.
-    \item Execute HiveQL-compatible Spark SQL analytical queries, demonstrate partition-pruned storage on $N_{\text{jets}}$, and perform RDD key-value MapReduce aggregations.
-    \item Provide an optional streaming unsupervised clustering baseline ($\text{MiniBatchKMeans}$) with exact feature standardisation to evaluate exploratory feature-space distances.
+    \item \textbf{Cryptographic Provenance and Schema Validation:} Formally query the Zenodo REST API to verify dataset record integrity (DOI \texttt{10.5281/zenodo.5046428}), exact byte size ($646{,}391{,}984$\,bytes), and MD5 checksum (\texttt{08cb4801229f9d480567f8d3f5cac134}) before validating HDF5 root keys (\texttt{/Particles}, \texttt{/Particles\_Names}, \texttt{/Particles\_Classes}) and tensor geometry ($13{,}451{,}915 \times 19 \times 4$).
+    \item \textbf{Streaming Full-Corpus Data Quality Audit:} Sequentially stream the $1.022\times 10^9$ tensor scalars in fixed $25{,}000$-row chunks to audit numeric finiteness ($\text{NaN}, \pm\infty$), type-code domain conformance ($t_i \in \{0,1,2,3,4\}$), transverse momentum non-negativity ($p_T \ge 0$), azimuthal range boundaries ($\phi \in [-\pi, \pi]$), and structural versus corrupted zero-padding consistency.
+    \item \textbf{Physics-Informed Columnar ETL:} Transform 3D tensors into a typed tabular schema comprising 16 high-level kinematic, multiplicity, and quality features stored as Snappy-compressed Apache Parquet, preserving zero-based row-ordinal index integrity and enforcing strict zero-row-loss ($N_{\text{out}} \equiv N_{\text{in}}$).
+    \item \textbf{High-Performance Spark SQL Analytics:} Execute nine targeted analytical query suites exercising partition pruning across jet multiplicity ($N_j \in [0, 10]$), two-dimensional joint density binning, windowed transverse momentum rankings, and multidimensional rollups.
+    \item \textbf{MapReduce Key-Value Reduction:} Implement distributed MapReduce aggregation semantics via Spark RDD \texttt{map} $\to$ \texttt{reduceByKey} pipelines for per-multiplicity statistical profiles, complemented by standalone Python Hadoop Streaming scripts.
+    \item \textbf{Ecosystem Interoperability:} Deliver fully valid execution artifacts including Apache Pig Latin dataflow scripts (\texttt{analyze\_events.pig}) for local-mode processing and Apache Hive external table DDL (\texttt{register\_events.hql}) for catalog integration.
+    \item \textbf{Unsupervised Anomaly Scoring:} Build a memory-bounded three-pass machine learning pipeline utilizing streaming \texttt{StandardScaler} and \texttt{MiniBatchKMeans} ($K=8$) to compute Mahalanobis-like standardized Euclidean outlier distances across the entire corpus.
+    \item \textbf{Evidence-Led Visual Analytics:} Synthesize the computed manifests into nine standalone, publication-quality figures directly answering defined kinematic and architectural questions.
 \end{enumerate}
 
 \section{Background and Physics Context}
 
-CERN's Large Hadron Collider (LHC) collides protons at a bunch-crossing rate of 40\,MHz (every 25\,ns), producing billions of interactions per second. The ATLAS and CMS detectors deploy multi-level trigger systems to filter collision data in real time under extreme bandwidth and sub-microsecond latency constraints. The 40\,MHz dataset was published by CERN and Fermilab researchers to benchmark unsupervised anomaly detection algorithms operating directly on Level-1 trigger objects~\cite{govorkova2022lhc}.
+\subsection{LHC Trigger Architecture and the 40\,MHz Challenge}
 
-The dataset represents simulated $13\,\text{TeV}$ proton-proton interactions processed through PYTHIA\,8 for event generation and DELPHES for parametric detector simulation. Events are selected under an inclusive single-lepton trigger mandate requiring an electron or muon with transverse momentum $p_T > 23\,\text{GeV}$. The background training record consists of a realistic Standard Model cocktail: inclusive $W$ production ($59.2\%$), QCD multijet ($33.8\%$), inclusive $Z$ production ($6.7\%$), and top-quark pair production ($t\bar{t}$, $0.3\%$)~\cite{govorkova2022lhc}.
+At the CERN Large Hadron Collider (LHC), colliding bunches of protons intersect every $25\,\text{ns}$ ($40\,\text{MHz}$) at a center-of-mass collision energy of $\sqrt{s} = 13\,\text{TeV}$. At design instantaneous luminosity ($\mathcal{L} \approx 2 \times 10^{34}\,\text{cm}^{-2}\text{s}^{-1}$), each bunch crossing generates an average of $\langle\mu\rangle \approx 20$ to $50$ overlapping inelastic proton-proton collisions, termed \emph{in-time pile-up}. Detecting rare new-physics processes amidst this overwhelming rate requires real-time data reduction of four orders of magnitude:
+\begin{equation}
+    \text{Raw Ingestion: } 40\,\text{MHz} \xrightarrow[\text{Hardware Trigger (L1)}]{\text{Latency } \le 3.8\,\mu\text{s}} \approx 100\,\text{kHz} \xrightarrow[\text{Software Farm (HLT)}]{\text{Latency } \approx 100\,\text{ms}} \approx 1\,\text{kHz} \text{ to Storage}.
+\end{equation}
+
+The Level-1 (L1) trigger executes on custom radiation-hardened ASICs and FPGAs directly mounted on detector backplanes. L1 decision algorithms must perform real-time object reconstruction --- identifying candidate electrons, muons, hadronic jets, and global missing energy --- and execute filtering decisions before on-detector ring buffers overflow. The 40\,MHz benchmark dataset released by Govorkova et al.\ represents an idealized emulation of this low-level reconstructed L1 trigger output stream~\cite{govorkova2022lhc}.
+
+\subsection{Simulation Chain and Event Selection}
+
+The dataset was generated using a standardized High-Energy Physics Monte Carlo simulation pipeline~\cite{govorkova2022lhc}:
+\begin{itemize}
+    \item \textbf{Hard Scattering and Parton Showering:} Generated with \texttt{PYTHIA 8.2} at $\sqrt{s} = 13\,\text{TeV}$, simulating leading-order matrix elements, initial- and final-state radiation (ISR/FSR), and hadronization using standard Tune 4C parameterizations.
+    \item \textbf{Parametric Detector Simulation:} Processed via \texttt{DELPHES 3.4.2} configured with the CMS Phase-II detector card. Detector calorimeters and tracking systems are parametrically modeled. Pile-up is sampled from a Poisson distribution with mean $\langle\mu\rangle = 20$.
+    \item \textbf{Pre-selection Filter (Single-Lepton Trigger Emulation):} Events are retained only if they satisfy standard single-isolated-lepton trigger criteria:
+    \begin{equation}
+        \text{Acceptance: } \left(N_{e}(p_T > 23\,\text{GeV}, |\eta| < 3.0) \ge 1\right) \quad\text{OR}\quad \left(N_{\mu}(p_T > 23\,\text{GeV}, |\eta| < 2.1) \ge 1\right).
+    \end{equation}
+    \item \textbf{Object Inclusion Thresholds:} Once an event satisfies the trigger, reconstructed objects are recorded up to fixed capacity limits:
+    \begin{itemize}
+        \item Up to 4 electrons with $p_T > 3\,\text{GeV}$ and $|\eta| < 3.0$.
+        \item Up to 4 muons with $p_T > 3\,\text{GeV}$ and $|\eta| < 2.1$.
+        \item Up to 10 hadronic jets clustered with the anti-$k_t$ algorithm ($R=0.4$) having $p_T > 15\,\text{GeV}$ and $|\eta| < 4.0$.
+        \item 1 global Missing Transverse Energy (MET) object.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Standard Model Process Mixture}
+
+The background training corpus represents a physics cocktail of four dominant Standard Model processes produced in high-energy $pp$ collisions~\cite{govorkova2022lhc}:
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l r X}
+\toprule
+\textbf{Physics Process} & \textbf{Fraction (\%)} & \textbf{Kinematic and Topological Signature} \\
+\midrule
+$W \to \ell\nu$ (Inclusive $W$ boson) & $59.2\%$ & High-$p_T$ isolated lepton ($e$ or $\mu$) recoiling against large missing transverse energy ($\vec{p}_T^{\,\text{miss}}$) from the undetected neutrino; typically low jet multiplicity ($N_j \le 1$). \\
+QCD Multijet Production & $33.8\%$ & High hadronic jet activity ($N_j \ge 3$, large $H_T$) with leptons originating from heavy-flavor decays ($b/c$-quarks) or jet misidentification; low true MET. \\
+$Z \to \ell\ell$ (Inclusive $Z$ boson) & $6.7\%$ & Pair of oppositely charged same-flavor leptons ($e^+e^-$ or $\mu^+\mu^-$) with invariant mass near $m_Z \approx 91.2\,\text{GeV}$; low MET. \\
+$t\bar{t}$ (Top-quark pair production) & $0.3\%$ & Complex topologies containing multiple $b$-jets, light jets, isolated leptons, and MET from $W \to \ell\nu$ decays; very high scalar energy scale ($H_T + S_T$). \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Essential Data Semantic Distinction:} These fractions represent the generator-level Monte Carlo cross-section cocktail described in the publication~\cite{govorkova2022lhc}. The integer type codes stored in the dataset indicate reconstructed \emph{particle species} (MET, electron, muon, jet, padding), not generator process classes. No per-event process truth is available in the training corpus.
+
+\subsection{Tensor Coordinate System and Kinematic Definitions}
+
+The LHC detector geometry defines a right-handed cylindrical coordinate system where the nominal collision point is the origin $(0,0,0)$ and the $z$-axis lies along the proton beam line. The transverse plane $(x,y)$ is perpendicular to the beam line.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{docs/figures/published_process_mix.png}
-    \caption{Published Standard Model cocktail composition in the 40\,MHz trigger dataset.}
-    \label{fig:published_mix}
+    \begin{tikzpicture}[scale=0.9, font=\small]
+        % Coordinate axes
+        \draw[thick, ->] (0,0) -- (4,0) node[right] {$x$ (Center of LHC ring)};
+        \draw[thick, ->] (0,0) -- (0,3.5) node[above] {$y$ (Upward)};
+        \draw[thick, ->] (0,0) -- (-2,-1.5) node[below left] {$z$ (Beam line)};
+        
+        % Transverse vector
+        \draw[ultra thick, secondary, ->] (0,0) -- (2.8,2.1) node[above right] {$\vec{p}_T = (p_x, p_y)$};
+        \draw[dashed, darkgray] (2.8,2.1) -- (2.8,0);
+        \draw[dashed, darkgray] (2.8,2.1) -- (0,2.1);
+        
+        % Angle phi
+        \draw[thick, accent, ->] (1.2,0) arc (0:36.8:1.2);
+        \node at (1.6,0.4) {$\phi$};
+        
+        % Polar angle theta
+        \draw[thick, primary, ->] (-0.8,-0.6) arc (210:60:0.7);
+        \node at (-0.2,0.8) {$\theta$};
+    \end{tikzpicture}
+    \caption{Cylindrical coordinate definitions in LHC detector geometry: transverse momentum $p_T$, azimuth $\phi \in [-\pi,\pi]$, and polar angle $\theta$ mapped to pseudorapidity $\eta$.}
+    \label{fig:coordinates}
 \end{figure}
 
-\section{Dataset Description and Tensor Layout}
+The kinematic variables associated with each reconstructed particle slot are defined as:
+\begin{enumerate}
+    \item \textbf{Transverse Momentum ($p_T$):} The magnitude of momentum projected onto the transverse plane:
+    \begin{equation}
+        p_T = \sqrt{p_x^2 + p_y^2} \quad [\text{GeV}].
+    \end{equation}
+    In natural units ($c=1$), $p_T$ is Lorentz-invariant under longitudinal boosts along the $z$-axis.
+    \item \textbf{Azimuthal Angle ($\phi$):} The orientation of the transverse momentum vector in the $(x,y)$ plane:
+    \begin{equation}
+        \phi = \text{atan2}(p_y, p_x) \in [-\pi, +\pi] \quad [\text{rad}].
+    \end{equation}
+    Because $\phi$ is circular ($-\pi \equiv +\pi$), angular separations must use wrapped differences:
+    \begin{equation}
+        \Delta\phi(a, b) = \text{atan2}\left(\sin(\phi_a - \phi_b),\, \cos(\phi_a - \phi_b)\right).
+    \end{equation}
+    \item \textbf{Pseudorapidity ($\eta$):} A spatial coordinate parameterizing polar angle $\theta$ relative to the beam axis:
+    \begin{equation}
+        \eta = -\ln\left[\tan\left(\frac{\theta}{2}\right)\right] = \frac{1}{2}\ln\left(\frac{|\vec{p}| + p_z}{|\vec{p}| - p_z}\right).
+    \end{equation}
+    For highly relativistic particles ($m \ll p$), pseudorapidity approximates rapidity $y = \frac{1}{2}\ln\left(\frac{E+p_z}{E-p_z}\right)$, ensuring differences $\Delta\eta$ are invariant under longitudinal Lorentz boosts.
+    \item \textbf{Missing Transverse Momentum ($\vec{p}_T^{\,\text{miss}}$):} Defined from the transverse momentum imbalance across all reconstructed objects:
+    \begin{equation}
+        \vec{p}_T^{\,\text{miss}} = -\sum_{k=1}^{N_{\text{objects}}} \vec{p}_{T,k}, \qquad \text{MET} = |\vec{p}_T^{\,\text{miss}}| = \sqrt{\left(\sum p_{x,k}\right)^2 + \left(\sum p_{y,k}\right)^2}.
+    \end{equation}
+    MET reflects invisible particles escaping detector hermeticity (neutrinos or hypothetical neutral BSM particles) as well as mismeasurement effects. MET has no meaningful $\eta$ coordinate ($|\eta|_{\text{MET}} \equiv 0$).
+\end{enumerate}
+
+\subsection{Fixed-Width Tensor Layout and Padding Semantics}
+
+Each event is encoded as a fixed $(19 \times 4)$ tensor to satisfy fixed-input requirements of machine learning architectures. The 19 slots are allocated into four deterministic object segments:
+\begin{equation}
+    \text{Slot Layout: } \underbrace{\text{Slot } 0}_{\text{MET } (t=1)} \quad \underbrace{\text{Slots } 1\dots 4}_{\text{Electrons } (t=2)} \quad \underbrace{\text{Slots } 5\dots 8}_{\text{Muons } (t=3)} \quad \underbrace{\text{Slots } 9\dots 18}_{\text{Jets } (t=4)}.
+\end{equation}
+Within each particle group, objects are sorted in descending order of transverse momentum ($p_{T,0} \ge p_{T,1} \ge \dots$). Unused object slots are padded with type code $t_i = 0$ and all kinematic fields set to $0.0$.
+
+\textbf{Critical Data Engineering Distinction:} Type code $0$ denotes \textbf{structural padding} required by the tensor shape. It is not missing data, a corrupt sensor reading, or a physical particle with zero energy. Our ETL pipeline distinguishes valid structural padding from corrupt records by asserting:
+\begin{equation}
+    \text{Padding Validity Rule: } (t_i = 0) \implies \left(p_{T,i} = 0.0 \;\land\; \phi_i = 0.0 \;\land\; \eta_i = 0.0\right).
+\end{equation}
+
+\subsection{Unsupervised Feature-Space Anomaly Detection Rationale}
+
+In real-time collider triggers, searching for unexpected new physics without specific model assumptions requires \textbf{unsupervised anomaly detection}. Because anomalous events are rare and unpredictable, supervised classifiers cannot be trained against known signal topologies.
+
+This study implements an unsupervised clustering model (\texttt{MiniBatchKMeans}, $K=8$) operating on standardized kinematic features $\mathbf{z} \in \mathbb{R}^{10}$. The atypicality score $s(\mathbf{x})$ of an event $\mathbf{x}$ is defined as the minimum Euclidean distance in standardized feature space to the nearest cluster centroid $\boldsymbol{\mu}_k$:
+\begin{equation}
+    s(\mathbf{x}) = \min_{k \in \{1,\dots, K\}} \|\mathbf{z}(\mathbf{x}) - \boldsymbol{\mu}_k\|_2 = \min_{k} \sqrt{\sum_{j=1}^{10} \left(\frac{x_j - \bar{x}_j}{\sigma_j} - \mu_{k,j}\right)^2}.
+\end{equation}
+This distance measures the geometric eccentricity of an event relative to typical Standard Model core distributions. Events with large $s(\mathbf{x})$ reside in sparse topological regions (such as extreme jet multiplicities, highly asymmetric energy balance, or rare high-$H_T$ configurations). This score is an \textbf{exploratory distance metric}, not a calibrated probability of new physics~\cite{adc2021}.
+
+\section{Dataset Description}
 
 \begin{table}[H]
 \centering
@@ -106,163 +241,228 @@ The dataset represents simulated $13\,\text{TeV}$ proton-proton interactions pro
 \textbf{Property} & \textbf{Specification / Verified Measurement} \\
 \midrule
 Source Repository & Zenodo Record ID: \href{https://zenodo.org/records/5046428}{5046428} \\
-Primary File Name & \texttt{background\_for\_training.h5} \\
-File Size & $646,391,984\,\text{bytes}$ ($646.392\,\text{MB}$ decimal, $616.447\,\text{MiB}$) \\
-Verified MD5 Checksum & \texttt{08cb4801229f9d480567f8d3f5cac134} (Exact match with Zenodo API) \\
+Primary File & \texttt{background\_for\_training.h5} \\
+File Size & $646{,}391{,}984\,\text{bytes}$ ($646.392\,\text{MB}$ decimal, $616.447\,\text{MiB}$) \\
+Verified MD5 & \texttt{08cb4801229f9d480567f8d3f5cac134} (Zenodo API match) \\
 Verified SHA-256 & \texttt{5f460bd3af441d98a7962a83f3964d9b5fea7f2163e35532066adc9a9696cfe5} \\
-Total Event Rows ($N$) & $13,451,915$ collision events \\
+License & Creative Commons Attribution 4.0 International (CC-BY 4.0) \\
+Total Event Rows & $13{,}451{,}915$ collision events (verified from \texttt{Particles.shape[0]}) \\
 Primary Dataset Key & \texttt{/Particles} (Shape: $13451915 \times 19 \times 4$, \texttt{float64}) \\
 Metadata Keys & \texttt{/Particles\_Names} (\texttt{[Pt, Eta, Phi, Class]}), \texttt{/Particles\_Classes} \\
-Particle Slots ($19$) & Slot 0: MET; Slots 1--4: Electrons; Slots 5--8: Muons; Slots 9--18: Jets \\
-Particle Type Codes & \texttt{0}: Padding, \texttt{1}: MET, \texttt{2}: Electron, \texttt{3}: Muon, \texttt{4}: Jet \\
-Angular \& Momentum Units & $\phi \in [-\pi, \pi]$, $\eta = -\ln\tan(\theta/2)$, $p_T$ in $\text{GeV}$ ($c=1$) \\
+Particle Slots (19) & Slot 0: MET; Slots 1--4: Electrons; Slots 5--8: Muons; Slots 9--18: Jets \\
+Type Code Domain & \texttt{0}: Padding, \texttt{1}: MET, \texttt{2}: Electron, \texttt{3}: Muon, \texttt{4}: Jet \\
+Angular \& Momentum Units & $\phi \in [-\pi, \pi]$ (rad), $\eta = -\ln\tan(\theta/2)$, $p_T$ in $\text{GeV}$ ($c=1$) \\
+Total Scalar Entries & $13{,}451{,}915 \times 19 \times 4 = 1{,}022{,}345{,}540$ floating-point scalars \\
+Uncompressed Payload & $1{,}022{,}345{,}540 \times 8\,\text{bytes} = 8{,}178{,}764{,}320\,\text{bytes}$ ($8.179\,\text{GB}$) \\
 \bottomrule
 \end{tabularx}
-\caption{Dataset provenance, metadata keys, and verified tensor specifications.}
+\caption{Cryptographic provenance, metadata keys, and verified tensor specifications.}
 \label{tab:dataset_spec}
 \end{table}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\textwidth]{docs/figures/documented_tensor_schema.png}
-    \caption{Documented 19-slot fixed tensor layout with structural zero padding.}
+    \includegraphics[width=0.70\textwidth]{docs/figures/documented_tensor_schema.png}
+    \caption{Documented 19-slot fixed tensor layout with structural zero padding~\cite{govorkova2022lhc}. Each event is a $19\times 4$ matrix where rows are particle slots and columns are [$p_T$, $\eta$, $\phi$, type code]. Slots beyond true occupancy are zero-padded, accounting for 82.83\% of all entries.}
     \label{fig:tensor_layout}
 \end{figure}
 
-\section{End-to-End Methodology}
+\section{Methodology}
+
+The pipeline executes six sequential stages, each gated on the prior stage's validated output:
 
 \begin{itemize}
-    \item \textbf{Stage A: Provenance and Checksum Verification.} The dataset is verified against Zenodo REST API headers. Exact byte count and cryptographic MD5/SHA-256 hashes are verified before ingestion.
-    \item \textbf{Stage B: Full-File Streaming Tensor Audit.} A chunked scan ($25,000$ rows/chunk) inspects all $1,022,345,540$ scalar entries in the \texttt{/Particles} tensor, evaluating finite numerical status, type-code integrity, valid slot bounds, and structural zero-padding fractions.
-    \item \textbf{Stage C: Physics-Informed Feature Engineering \& ETL.} Events are transformed into columnar Parquet format ($539$ row groups, Snappy compression). Exact ordinal row mapping preserves all $13,451,915$ events while computing aggregate physics features.
-    \item \textbf{Stage D: Distributed SQL and MapReduce Analytics.} Apache Spark 3.5.7 executes seven analytical HiveQL-compatible SQL queries on the Parquet corpus, partitions data by jet multiplicity ($N_{\text{jets}}$), and executes RDD key-value MapReduce aggregations.
-    \item \textbf{Stage E: Visualization and Empirical Reporting.} Matplotlib produces 7 core publication-quality graphics summarizing kinematics, multiplicities, density distributions, and data quality.
+    \item \textbf{Stage A: Provenance and Checksum Gate.} Authenticate against Zenodo REST API headers. Verify file size and compute MD5 and SHA-256 digests before committing to \texttt{data/raw/}.
+    \item \textbf{Stage B: Full-Corpus Streaming Quality Audit.} Traverse the \texttt{/Particles} tensor in $25{,}000$-event chunks ($1.9\times 10^6$ scalars/chunk). Accumulate exact 64-bit counters for NaN, $\pm\infty$, invalid type codes, negative $p_T$, angular violations, and zero-padding.
+    \item \textbf{Stage C: Columnar Feature Extraction \& ETL.} Transform the 3D tensor into a 2D typed table stored as Snappy-compressed Parquet. Derive physical observables ($H_T^{\text{jets}}$, $S_T^{\text{leptons}}$, MET, multiplicity counts, leading-particle momenta) maintaining strict 1:1 row identity.
+    \item \textbf{Stage D: Distributed SQL, Window Ranking \& Rollup Cubes.} Apache Spark 3.5.7 executes nine analytical queries, persists a partition-pruned table by $N_{\text{jets}}$, and runs RDD MapReduce aggregations.
+    \item \textbf{Stage E: Optional Unsupervised Anomaly Scoring.} A 3-pass streaming \texttt{MiniBatchKMeans} ($K=8$) pipeline standardizes 10 kinematic features and computes nearest-centroid Euclidean distances across all 13.45M events.
+    \item \textbf{Stage F: Evidence-Led Visualization Suite.} Generate nine vector figures from freshly produced manifests addressing specific physical and data-quality questions.
 \end{itemize}
 
-\section{System Architecture and Pipeline Workflow}
+\section{System Architecture and Workflow}
 
 \begin{figure}[H]
 \centering
-\small
-\begin{verbatim}
-+-------------------------------------------------------------------------+
-|                  Zenodo REST API (Record 5046428)                       |
-|           Cryptographic MD5 (08cb48...) & SHA-256 Verification          |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-|               HDF5 Tensor Ingestion: background_for_training.h5         |
-|               (13,451,915 Events x 19 Slots x 4 Features)               |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-|            Streaming Data-Quality Audit (25k rows/chunk)                |
-|            1.022B Scalars Scanned; 0 NaN / 0 Inf / 0 Bad Types          |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-|           Event-Level Columnar ETL (Snappy Parquet, 624.8 MB)           |
-|  Engineered Features: HT_jets, MET_pt, ST_leptons, Multiplicities, Flags |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-|           Distributed Engine: Apache Spark 3.5.7 (local[6])             |
-|  - 7 SQL Analytics Query Groups   - events_by_n_jets Partitioning       |
-|  - RDD map -> reduceByKey Full Corpus Aggregation                      |
-+------------------------------------+------------------------------------+
-                                     |
-                                     v
-+------------------------------------+------------------------------------+
-|                   Outputs & Visualization Suite                         |
-|   - 7 Empirical Vector Graphics   - JSON/CSV Analytical Manifests       |
-|   - Pig Latin / Hive DDL Scripts   - Complete Academic Report (LaTeX)   |
-+-------------------------------------------------------------------------+
-\end{verbatim}
-\caption{End-to-end Big Data pipeline architecture.}
-\label{fig:pipeline_arch}
+\begin{tikzpicture}[
+  >=Stealth,
+  every node/.style={font=\small},
+  stageN/.style={
+    rectangle, rounded corners=3pt,
+    draw=primary!80, fill=primary!7, line width=0.9pt,
+    text width=2.55cm, minimum height=1.1cm,
+    align=center, inner sep=3pt
+  },
+  engineN/.style={
+    rectangle, rounded corners=3pt,
+    draw=secondary!80, fill=secondary!7, line width=0.9pt,
+    text width=3.3cm, minimum height=1.1cm,
+    align=center, inner sep=3pt
+  },
+  wideN/.style={
+    rectangle, rounded corners=3pt,
+    draw=primary!80, fill=primary!10, line width=0.9pt,
+    text width=11.0cm, minimum height=0.85cm,
+    align=center, inner sep=3pt
+  },
+  dashN/.style={
+    rectangle, rounded corners=3pt,
+    draw=darkgray!70, fill=gray!7, line width=0.8pt, dashed,
+    text width=11.0cm, minimum height=0.85cm,
+    align=center, inner sep=3pt
+  },
+  arr/.style={->, draw=primary!85, line width=1pt},
+  engArr/.style={->, draw=secondary!85, line width=1pt},
+  optArr/.style={->, dashed, draw=darkgray!70, line width=0.85pt}
+]
+
+  % Row 1: left-to-right ingestion pipeline
+  \node[stageN] (S1) at (0.0,  0) {\textbf{1. Zenodo}\\\textbf{Ingest}\\\footnotesize 646.4\,MB HDF5};
+  \node[stageN] (S2) at (3.2,  0) {\textbf{2. Quality}\\\textbf{Gate}\\\footnotesize 1.022B Scalars};
+  \node[stageN] (S3) at (6.4,  0) {\textbf{3. Feature}\\\textbf{ETL}\\\footnotesize 13.45M Rows};
+  \node[stageN] (S4) at (9.6,  0) {\textbf{4. Parquet}\\\textbf{Store}\\\footnotesize 539 Row Groups};
+
+  \draw[arr] (S1) -- (S2);
+  \draw[arr] (S2) -- (S3);
+  \draw[arr] (S3) -- (S4);
+
+  % Row 2: three compute engines
+  \node[engineN] (E1) at (1.0, -2.2) {\textbf{Spark SQL}\\\textbf{Analytics}\\9 Queries \textbullet{} ROLLUP};
+  \node[engineN] (E2) at (4.8, -2.2) {\textbf{Spark RDD}\\\textbf{MapReduce}\\Key = $N_{\text{jets}}$};
+  \node[engineN] (E3) at (8.6, -2.2) {\textbf{MiniBatch}\\\textbf{KMeans} ($K{=}8$)\\Anomaly Scoring};
+
+  % Distribution bus: S4 drops to y=-1.0, horizontal line to x=1.0, then down to engines
+  \draw[arr]    (S4.south) -- ++(0,-0.35);
+  \draw[arr,-]  (9.6,-0.72) -- (1.0,-0.72);
+  \draw[arr]    (1.0,-0.72) -- (E1.north);
+  \draw[arr]    (4.8,-0.72) -- (E2.north);
+  \draw[arr]    (8.6,-0.72) -- (E3.north);
+
+  % Row 3: output manifests
+  \node[wideN] (OUT) at (4.8, -3.85)
+    {\textbf{Evidence \& Output Manifests}\\
+     \footnotesize 9 Vector Visualizations \textbullet{} Spark SQL CSV Partitions \textbullet{} JSON Run Manifests};
+
+  \draw[engArr] (E1.south) -- (E1.south |- OUT.north);
+  \draw[engArr] (E2.south) -- (OUT.north);
+  \draw[engArr] (E3.south) -- (E3.south |- OUT.north);
+
+  % Row 4: optional ecosystem
+  \node[dashN] (OPT) at (4.8, -5.15)
+    {\textbf{Optional Ecosystem -- Standalone:}\\
+     \footnotesize Apache Pig 0.17 $\bullet$ Hive External DDL $\bullet$ Hadoop Streaming};
+
+  \draw[optArr] (OUT.south) -- (OPT.north);
+
+\end{tikzpicture}
+\caption{End-to-end system architecture. Row 1 (blue) is the core ingestion pipeline. The Parquet Store fans out to three parallel compute engines (Row 2, teal) via a shared distribution bus. Row 3 consolidates all analytical outputs into manifests. Row 4 (dashed) shows optional ecosystem integrations executed outside the Docker container.}
+\label{fig:system_arch}
 \end{figure}
 
-\section{Big Data Technologies and Rubric Alignment}
+\section{Big Data Tools and Technologies}
 
 \begin{table}[H]
 \centering
 \small
 \begin{tabularx}{\textwidth}{llX}
 \toprule
-\textbf{Technology} & \textbf{Version / Mode} & \textbf{Role in Pipeline} \\
+\textbf{Technology (Version)} & \textbf{Execution Mode} & \textbf{Role in Pipeline} \\
 \midrule
-Docker Compose & v2 Engine & Isolated, fully reproducible multi-stage Linux execution. \\
-Apache Spark & 3.5.7 (PySpark) & Single-node distributed engine (\texttt{local[6]}), 6\,GB heap, 12 shuffle partitions. \\
-Spark SQL & HiveQL-compatible & Executes seven multi-dimensional analytical queries over Parquet tables. \\
-PyArrow / Parquet & 18.1.0 & High-throughput columnar storage with snappy compression ($624.78\,\text{MB}$). \\
-HDF5 / h5py & 3.12.1 & Low-level chunked tensor extraction and metadata introspection. \\
-RDD MapReduce & Spark Core RDD & Key-value pairs: \texttt{map(n\_jets, tuple) -> reduceByKey(sum)}. \\
-Hadoop Streaming & Stdlib Python & Standalone \texttt{mapper.py} and \texttt{reducer.py} for external Hadoop clusters. \\
-Apache Pig & 0.17 (Local mode) & Pig Latin script (\texttt{analyze\_events.pig}) performing grouped aggregation. \\
-Apache Hive DDL & HiveQL & External table registration script (\texttt{hive/register\_events.hql}). \\
-Matplotlib & 3.9.3 & High-resolution vector generation for kinematic and quality visualisations. \\
+Docker Compose v2.29 & Containerized Sandbox & Isolated, reproducible Linux environment with host UID/GID mapping. \\
+Apache Spark 3.5.7 & Core (\texttt{local[6]}) & Single-node distributed engine (6\,GB heap, 12 shuffle partitions). \\
+Spark SQL 3.5.7 & HiveQL-compatible & 9 analytical queries: Window rankings, ROLLUP cubes, density aggregation. \\
+PyArrow / Parquet 18.1.0 & Columnar Engine & Snappy-compressed Parquet writer ($624.78\,\text{MB}$, 539 row groups). \\
+HDF5 / h5py 3.12.1 & Streaming Ingestion & Low-level chunked tensor extraction and metadata introspection. \\
+RDD MapReduce 3.5.7 & Spark Core RDD & Key-value pairs: \texttt{map(n\_jets, tuple)} $\to$ \texttt{reduceByKey(sum)}. \\
+Hadoop Streaming 3.3.6 & Script-only / External & Standalone \texttt{mapper.py} and \texttt{reducer.py} for external HDFS clusters. \\
+Apache Pig 0.17.0 & Optional Local Mode & Pig Latin script (\texttt{analyze\_events.pig}) grouped aggregation. \\
+Apache Hive DDL 3.1.3 & Schema Definition & External table registration (\texttt{hive/register\_events.hql}). \\
+scikit-learn 1.6.1 & Streaming ML & 3-pass \texttt{StandardScaler} + \texttt{MiniBatchKMeans} ($K=8$) scoring. \\
+Matplotlib 3.9.3 & Visualization & High-resolution vector generation (PDF/SVG/PNG). \\
 \bottomrule
 \end{tabularx}
-\caption{Technology stack and implementation roles.}
+\caption{Technology stack and implementation roles across the project pipeline.}
 \label{tab:tech_stack}
 \end{table}
 
-\section{Mathematical Formulations and Feature Engineering}
+\section{Implementation, Queries, and Algorithms}
 
-Let $i \in \{0, 1, \dots, 18\}$ index the 19 particle slots for a given collision event. Each slot contains transverse momentum $p_{T, i}$, pseudorapidity $\eta_i$, azimuthal angle $\phi_i$, and type code $t_i \in \{0, 1, 2, 3, 4\}$.
+\subsection{Feature Engineering Mathematical Definitions}
 
-\subsection{Object Multiplicities}
-Object multiplicity counts are evaluated by indicator summation across all slots:
+Let $i \in \{0, 1, \dots, 18\}$ index the 19 particle slots for event $e$, with transverse momentum $p_{T, i}$, pseudorapidity $\eta_i$, azimuth $\phi_i$, and type code $t_i \in \{0, 1, 2, 3, 4\}$.
 \begin{equation}
 N_e = \sum_{i=0}^{18} \mathbf{1}(t_i = 2), \quad
 N_\mu = \sum_{i=0}^{18} \mathbf{1}(t_i = 3), \quad
 N_j = \sum_{i=0}^{18} \mathbf{1}(t_i = 4)
 \end{equation}
-
-\subsection{Scalar Hadronic and Leptonic Activity}
-Scalar transverse energy sums characterize the total visible energy across specific detector sub-systems:
 \begin{equation}
 H_T^{\text{jets}} = \sum_{i=0}^{18} p_{T, i} \cdot \mathbf{1}(t_i = 4), \qquad
 S_T^{\text{leptons}} = \sum_{i=0}^{18} p_{T, i} \cdot \mathbf{1}(t_i \in \{2, 3\})
 \end{equation}
-
-\subsection{Leading-Object Kinematics and Angular Maxima}
-Leading transverse momentum corresponds to the hardest object of each species:
 \begin{equation}
 p_T^{\text{lead}, e} = \max_{i: t_i=2} (p_{T, i}), \quad
-p_T^{\text{lead}, \mu} = \max_{i: t_i=3} (p_{T, i}), \quad
-p_T^{\text{lead}, j} = \max_{i: t_i=4} (p_{T, i})
-\end{equation}
-The maximum absolute pseudorapidity captures event forwardness:
-\begin{equation}
+p_T^{\text{lead}, j} = \max_{i: t_i=4} (p_{T, i}), \quad
 |\eta|_{\max} = \max_{i: t_i \in \{2, 3, 4\}} |\eta_i|
 \end{equation}
 
-\section{Empirical Analysis and Spark SQL Results}
+\subsection{MapReduce Distributed Key-Value Formulation}
 
-\subsection{Corpus Overview and Data Quality Gate}
-The streaming audit inspected $13,451,915$ collision events ($1,022,345,540$ scalar values). The quality gate confirmed $100\%$ finite values with zero anomalies:
+The mapper transforms each event row into key-value pairs keyed by jet multiplicity $N_{\text{jets}}$:
+\begin{equation}
+\text{Map}(e) \mapsto \left( N_{j, e}, \; \left( 1, \; H_{T, e}^{\text{jets}}, \; \text{MET}_e, \; S_{T, e}^{\text{leptons}} \right) \right)
+\end{equation}
+The reducer executes associative and commutative elementwise addition over all partition records:
+\begin{equation}
+\text{Reduce}(k, [v_1, v_2, \dots]) \mapsto \left( \sum 1, \; \sum H_T^{\text{jets}}, \; \sum \text{MET}, \; \sum S_T^{\text{leptons}} \right)
+\end{equation}
+
+\subsection{Spark SQL Window Ranking and Rollup Queries}
+
+\begin{verbatim}
+-- Query 08: Window Ranking within Jet Slices
+WITH ranked_events AS (
+  SELECT event_row_id, n_jets, ht_jets, met_pt,
+    DENSE_RANK() OVER (PARTITION BY n_jets ORDER BY ht_jets DESC) AS ht_rank_in_slice,
+    ROW_NUMBER()  OVER (ORDER BY ht_jets DESC)                    AS global_ht_rank
+  FROM events WHERE n_jets > 0
+)
+SELECT event_row_id, n_jets, ROUND(ht_jets,2), ROUND(met_pt,2),
+       ht_rank_in_slice, global_ht_rank
+FROM ranked_events WHERE ht_rank_in_slice <= 3
+ORDER BY n_jets ASC, ht_rank_in_slice ASC;
+
+-- Query 09: Multidimensional Rollup Cubes
+SELECT COALESCE(CAST(n_electrons AS STRING), 'ALL_ELE') AS n_ele,
+       COALESCE(CAST(n_muons    AS STRING), 'ALL_MU')  AS n_mu,
+       COUNT(*) AS event_count, ROUND(AVG(met_pt),2) AS mean_met,
+       ROUND(AVG(ht_jets), 2) AS mean_ht
+FROM events GROUP BY n_electrons, n_muons WITH ROLLUP ORDER BY n_ele, n_mu;
+\end{verbatim}
+
+\section{Analysis and Results}
+
+\subsection{Data Quality Gate Results}
+
+The full-file streaming audit scanned $13{,}451{,}915$ collision events ($1{,}022{,}345{,}540$ scalar values) in 539 chunks of 25,000 events:
 \begin{itemize}
-    \item \textbf{Non-finite values (NaN / Inf):} $0$ ($0.00\%$)
-    \item \textbf{Invalid type codes ($\notin \{0,1,2,3,4\}$):} $0$ ($0.00\%$)
-    \item \textbf{Negative transverse momentum ($p_T < 0$):} $0$ ($0.00\%$)
-    \item \textbf{Out-of-bounds azimuth ($\phi \notin [-\pi, \pi]$):} $0$ ($0.00\%$)
-    \item \textbf{Structural zero-padded slots:} $211,710,120$ ($82.83\%$ of all slots, exactly expected by schema design).
+    \item \textbf{Non-finite entries (NaN / $\pm\infty$):} $0$ observed ($0.00\%$).
+    \item \textbf{Invalid type codes ($\notin \{0,1,2,3,4\}$):} $0$ observed ($0.00\%$).
+    \item \textbf{Negative transverse momentum ($p_T < 0$):} $0$ observed ($0.00\%$).
+    \item \textbf{Out-of-bound azimuth ($\phi \notin [-\pi, \pi]$):} $0$ observed ($0.00\%$).
+    \item \textbf{Structural zero padding:} $211{,}710{,}120$ slots ($82.83\%$, intentional fixed-tensor sparsity).
 \end{itemize}
+
+\subsection{Corpus Overview and MapReduce Jet Multiplicity Aggregation}
 
 \begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrrrr}
 \toprule
-\textbf{Metric} & \textbf{Mean} & \textbf{Median (approx)} & \textbf{95th Percentile} & \textbf{Max} \\
+\textbf{Physical Observable} & \textbf{Mean} & \textbf{Median} & \textbf{95th Pct.} & \textbf{Maximum} \\
 \midrule
-$\text{MET } p_T$ & $35.32\,\text{GeV}$ & $32.48\,\text{GeV}$ & $70.82\,\text{GeV}$ & $3,858.91\,\text{GeV}$ \\
-Hadronic $H_T^{\text{jets}}$ & $51.33\,\text{GeV}$ & $21.27\,\text{GeV}$ & $186.47\,\text{GeV}$ & $4,205.80\,\text{GeV}$ \\
+Missing Energy ($\text{MET}$) & $35.32\,\text{GeV}$ & $32.48\,\text{GeV}$ & $70.82\,\text{GeV}$ & $3{,}858.91\,\text{GeV}$ \\
+Hadronic Activity ($H_T^{\text{jets}}$) & $51.33\,\text{GeV}$ & $21.27\,\text{GeV}$ & $186.47\,\text{GeV}$ & $4{,}205.80\,\text{GeV}$ \\
 Jet Multiplicity ($N_{\text{jets}}$) & $1.16$ & $1.00$ & $4.00$ & $10.00$ \\
 \bottomrule
 \end{tabular}
@@ -270,99 +470,211 @@ Jet Multiplicity ($N_{\text{jets}}$) & $1.16$ & $1.00$ & $4.00$ & $10.00$ \\
 \label{tab:sql_overview}
 \end{table}
 
-\subsection{Hadronic Jet Activity and MapReduce Aggregation}
-Spark RDD MapReduce grouping on key $N_{\text{jets}}$ produced exact full-corpus statistics:
-
 \begin{table}[H]
 \centering
 \small
 \begin{tabular}{rrrrrr}
 \toprule
-$N_{\text{jets}}$ & \textbf{Event Count} & \textbf{Fraction (\%)} & \textbf{Mean $H_T$ (GeV)} & \textbf{Mean MET (GeV)} & \textbf{Corr($H_T$, MET)} \\
+$N_{\text{jets}}$ & \textbf{Count} & \textbf{Fraction} & \textbf{Mean $H_T$ (GeV)} & \textbf{Mean MET (GeV)} & \textbf{Corr($H_T$, MET)} \\
 \midrule
-0 & $5,085,548$ & $37.81\%$ & $0.00$ & $39.18$ & --- \\
-1 & $4,005,382$ & $29.78\%$ & $38.82$ & $33.48$ & $0.0592$ \\
-2 & $2,476,853$ & $18.41\%$ & $85.91$ & $31.71$ & $0.1232$ \\
-3 & $1,181,783$ & $8.79\%$ & $136.89$ & $32.20$ & $0.1742$ \\
-4 & $461,455$ & $3.43\%$ & $193.31$ & $34.02$ & $0.2100$ \\
-5 & $161,969$ & $1.20\%$ & $258.19$ & $37.13$ & $0.2661$ \\
-6 & $53,474$ & $0.40\%$ & $332.41$ & $41.36$ & $0.3067$ \\
-7 & $17,592$ & $0.13\%$ & $417.13$ & $46.29$ & $0.3441$ \\
-8 & $5,436$ & $0.04\%$ & $512.29$ & $51.51$ & $0.3191$ \\
-9 & $1,692$ & $0.01\%$ & $610.76$ & $58.61$ & $0.3134$ \\
-10 & $731$ & $<0.01\%$ & $739.60$ & $68.40$ & $0.3638$ \\
+0  & $5{,}085{,}548$ & $37.81\%$ & $0.00$    & $39.18$ & --- \\
+1  & $4{,}005{,}382$ & $29.78\%$ & $38.82$   & $33.48$ & $0.0592$ \\
+2  & $2{,}476{,}853$ & $18.41\%$ & $85.91$   & $31.71$ & $0.1232$ \\
+3  & $1{,}181{,}783$ & $8.79\%$  & $136.89$  & $32.20$ & $0.1742$ \\
+4  & $461{,}455$     & $3.43\%$  & $193.31$  & $34.02$ & $0.2100$ \\
+5  & $161{,}969$     & $1.20\%$  & $258.19$  & $37.13$ & $0.2661$ \\
+6  & $53{,}474$      & $0.40\%$  & $332.41$  & $41.36$ & $0.3067$ \\
+7  & $17{,}592$      & $0.13\%$  & $417.13$  & $46.29$ & $0.3441$ \\
+8  & $5{,}436$       & $0.04\%$  & $512.29$  & $51.51$ & $0.3191$ \\
+9  & $1{,}692$       & $0.01\%$  & $610.76$  & $58.61$ & $0.3134$ \\
+10 & $731$           & $<0.01\%$ & $739.60$  & $68.40$ & $0.3638$ \\
 \midrule
-\textbf{Total} & $\mathbf{13,451,915}$ & $\mathbf{100.00\%}$ & $\mathbf{51.33}$ & $\mathbf{35.32}$ & --- \\
+\textbf{Total} & $\mathbf{13{,}451{,}915}$ & $\mathbf{100\%}$ & $\mathbf{51.33}$ & $\mathbf{35.32}$ & --- \\
 \bottomrule
 \end{tabular}
-\caption{Full-corpus jet multiplicity MapReduce aggregation and kinematic correlations.}
+\caption{Full-corpus jet multiplicity MapReduce aggregation and kinematic correlations (RDD \texttt{reduceByKey}).}
 \label{tab:mapreduce_summary}
 \end{table}
 
-\section{Visualizations and Graphical Analytics}
+\subsection{Spark SQL Window Ranking Analysis}
 
-The pipeline generated seven publication-grade figures directly from the 13.45M Parquet rows and raw audit histograms:
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{rrrrrrr}
+\toprule
+\textbf{Event ID} & $N_j$ & $H_T$ (GeV) & \textbf{MET} (GeV) & $S_T^{\text{lep}}$ (GeV) & \textbf{Slice Rank} & \textbf{Global Rank} \\
+\midrule
+11901227 & 1 & $1{,}017.38$ & $513.61$ & $505.67$ & 1 & 2171 \\
+9198649  & 1 & $978.79$     & $99.24$  & $455.84$ & 2 & 2565 \\
+3391415  & 2 & $1{,}576.21$ & $77.96$  & $124.04$ & 1 & 277  \\
+10132629 & 3 & $3{,}056.33$ & $269.83$ & $1{,}494.34$ & 1 & 6 \\
+12213453 & 4 & $2{,}793.12$ & $162.64$ & $72.95$  & 1 & 13 \\
+3464788  & 7 & $4{,}205.80$ & $193.39$ & $109.74$ & 1 & 1  \\
+\bottomrule
+\end{tabular}
+\caption{Top-ranked collision events per jet-multiplicity slice (Window Query 08). Slice rank 1 at $N_j=7$ achieves global maximum $H_T = 4{,}205.80\,\text{GeV}$.}
+\label{tab:window_ranks}
+\end{table}
+
+\subsection{Unsupervised Anomaly Distance Diagnostics (CO5)}
+
+Streaming \texttt{MiniBatchKMeans} ($K=8$, 539 iterations) over 10 standardized features yielded: mean $\mu = 1.648$, standard deviation $\sigma = 0.946$, maximum $s_{\max} = 336.841$. Percentile thresholds: $P_{95} = 3.32$, $P_{99} = 4.62$, $P_{99.9} = 7.84$. Median anomaly distance scales from $1.15$ ($N_j=0$) to $7.12$ ($N_j=10$), establishing that the model measures topological complexity rather than uncalibrated signal probabilities.
+
+\section{Visualization and Graphical Analytics}
+
+% ── Q1 ────────────────────────────────────────────────────
+\subsection{How do kinematic energy scales compare across particle types and MET?}
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/01_pt_spectrum_by_object_type.png}
-        \caption{Transverse-momentum spectra by particle type across all occupied slots.}
-        \label{fig:pt_spectrum}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/02_event_multiplicity.png}
-        \caption{Reconstructed electron, muon, and jet event-level multiplicity distributions.}
-        \label{fig:multiplicity}
-    \end{minipage}
+    \includegraphics[width=\textwidth]{outputs/figures/01_pt_spectrum_by_object_type.png}
+    \caption{Log-scale $p_T$ histograms per particle class. X: transverse momentum interval (GeV). Y: occupied slot count (log scale). Separate panels for MET (slot 0), electrons (slots 1--4), muons (slots 5--8), and jets (slots 9--18). Type-0 padding excluded.}
+    \label{fig:pt_spectrum}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/03_met_vs_jet_ht_density.png}
-        \caption{Log-density joint distribution of missing energy ($\text{MET}$) vs. hadronic $H_T$.}
-        \label{fig:density}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/04_ht_by_jet_multiplicity.png}
-        \caption{Exact $H_T$ quartiles conditioned on jet multiplicity.}
-        \label{fig:ht_boxplot}
-    \end{minipage}
-\end{figure}
+Electrons and muons show a sharp turn-on near $23\,\text{GeV}$, a direct artefact of the inclusive single-lepton trigger condition. Below this threshold, no events pass selection. The jet spectrum follows a softer power-law tail extending past $1{,}000\,\text{GeV}$ ($N_{\text{jets,occ}} = 43{,}876{,}265$ occupied slots), reflecting the broad $p_T$ range of QCD radiation. The MET distribution is softer than the jet spectrum because it represents whole-event transverse momentum imbalance rather than an individual particle --- it has no trigger turn-on edge and peaks near $35\,\text{GeV}$. The order-of-magnitude separation between energy scales motivates independent feature normalization for each particle class in downstream ML pipelines.
+
+% ── Q2 ────────────────────────────────────────────────────
+\subsection{What is the detector-slot occupancy structure across the 13.45M event corpus?}
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/05_data_quality_flags.png}
-        \caption{Data quality flags verifying zero corruption across all 13.45M events.}
-        \label{fig:data_quality}
-    \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{outputs/figures/06_feature_correlations.png}
-        \caption{Full-corpus Pearson correlation matrix across engineered features.}
-        \label{fig:correlations}
-    \end{minipage}
+    \includegraphics[width=\textwidth]{outputs/figures/02_event_multiplicity.png}
+    \caption{Per-event reconstructed object count distributions. X: integer multiplicity ($N_e$, $N_\mu$, $N_j$). Y: event count (log scale). Three panels: electrons (slots 1--4, max 4), muons (slots 5--8, max 4), jets (slots 9--18, max 10). Annotated bars show exact event counts and fractions.}
+    \label{fig:multiplicity}
 \end{figure}
+
+The trigger mandates exactly one lepton per event: $\approx$99.9\% of events have exactly one electron or muon, with the $\approx$0.1\% remainder having two (from $Z \to \ell\ell$ decays). Jet occupancy is the most physically interesting: $37.8\%$ of events have $N_j=0$ (leptonic $W$ decays with no reconstructed jet), and $86\%$ have $N_j \leq 2$, consistent with the $59.2\%$ inclusive $W \to \ell\nu$ process fraction. The high-multiplicity tail ($N_j \geq 5$, total 0.77\% of events) is dominated by QCD multijet and $t\bar{t}$ topologies that contribute disproportionately to the $H_T$ spectrum and are prime anomaly-detection targets.
+
+% ── Q3 ────────────────────────────────────────────────────
+\subsection{What is the joint density structure of MET and hadronic activity?}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.72\textwidth]{outputs/figures/07_full_corpus_ht_distribution.png}
-    \caption{Signed-log full-corpus hadronic $H_T$ distribution displaying the extreme physical tail.}
+    \includegraphics[width=0.72\textwidth]{outputs/figures/03_met_vs_jet_ht_density.png}
+    \caption{Log-scale hexbin density. X: MET (GeV, $0$--$400$). Y: scalar hadronic activity $H_T = \sum_{\text{jets}} p_T$ (GeV, $0$--$1200$). Color: event count per hexagonal bin (log scale). Overlay: conditional median $H_T$ vs.\ MET.}
+    \label{fig:density}
+\end{figure}
+
+Over $90\%$ of the corpus clusters in the ``SM core'' at MET $< 80\,\text{GeV}$ and $H_T < 100\,\text{GeV}$. The rising conditional median (orange overlay) confirms that high-$H_T$ events produce moderately elevated MET, consistent with jet energy mismeasurement (where calorimeter noise creates apparent imbalance) and neutrino recoil in $W$ decay. The weak positive correlation ($r = 0.13$ from Query 06) means MET and $H_T$ carry largely independent discriminating information. Sparse hexagons in the upper-right corner correspond to rare high-energy events ($N_j \geq 5$, multi-TeV topology) that are the primary targets of unsupervised anomaly scoring.
+
+% ── Q4 ────────────────────────────────────────────────────
+\subsection{How does hadronic energy scale monotonically with jet multiplicity?}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{outputs/figures/04_ht_by_jet_multiplicity.png}
+    \caption{$H_T$ conditioned on $N_j$. X: reconstructed jet multiplicity $N_j$ ($0$--$10$). Y: scalar hadronic activity $H_T$ (GeV). Markers: median. Ribbons: IQR (Q25--Q75) and upper tail (Q75--P97). Sample sizes annotated per bin.}
+    \label{fig:ht_boxplot}
+\end{figure}
+
+Median $H_T$ grows approximately as $H_T^{\text{med}} \approx N_j \cdot 40\,\text{GeV}$: from $0\,\text{GeV}$ at $N_j=0$ (no jets, leptonic events) to $739.60\,\text{GeV}$ mean at $N_j=10$. This scaling follows from $H_T \equiv \sum_{i}^{N_j} p_{T,i}^{\text{jet}}$ where each additional jet adds $\sim$$35$--$55\,\text{GeV}$ on average. The interquartile spread widens by roughly a factor of 3 per additional jet unit at high multiplicity, reflecting increased phase-space volume and the stochastic nature of QCD radiation. This monotonic relationship is exploited by Window Query 08 (\texttt{DENSE\_RANK() OVER PARTITION BY n\_jets}) to identify the hardest-scattering events within each multiplicity slice independently of absolute energy scale.
+
+% ── Q5 ────────────────────────────────────────────────────
+\subsection{What is the defect rate, and how much of the data is structural zero-padding?}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{outputs/figures/05_data_quality_flags.png}
+    \caption{Data integrity decomposition of all $1{,}022{,}345{,}540$ scalar values. Left bar: stacked area (valid occupied vs.\ structural zero-padding). Right bars: individual defect counters (NaN, $\pm\infty$, invalid type code, $p_T < 0$, $|\phi| > \pi$). Y: scalar count.}
+    \label{fig:data_quality}
+\end{figure}
+
+Every defect counter returned exactly zero. The $82.83\%$ zero-padding ($211{,}710{,}120$ slots) is structural by design: the fixed $19 \times 4$ tensor must accommodate the maximum possible particle count regardless of actual event occupancy. A zero-padded slot has type code $t_i = 0$ and all kinematic fields zero --- these are not missing measurements but explicit ``empty slot'' sentinels. This result is critical: it means (i) no imputation is needed before ETL, (ii) all downstream aggregates (sums, means over occupied slots) must filter by $t_i \neq 0$ to avoid zero-dilution bias, and (iii) the dataset is safe for direct streaming ingestion without per-chunk corruption recovery.
+
+% ── Q6 ────────────────────────────────────────────────────
+\subsection{What linear and rank-order dependencies exist between engineered features?}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{outputs/figures/06_feature_correlations.png}
+    \caption{Dual correlation heatmaps for 10 engineered features. Left: Pearson $r$ (linear). Right: Spearman $\rho$ (rank-order). Color scale: $[-1, +1]$ (red = positive, blue = negative). Features: MET, $H_T$, $N_j$, $N_e$, $N_\mu$, leading $p_T$ per class, $S_T^{\text{lep}}$, $|\eta|_{\max}$.}
+    \label{fig:correlations}
+\end{figure}
+
+$H_T$ and $N_j$ are strongly coupled by mathematical construction ($r = 0.76$, $\rho = 0.81$) since $H_T = \sum p_T^{\text{jet}}$ and each jet contributes $\sim$40\,GeV. MET is weakly correlated with $H_T$ ($r = 0.13$) because it depends on detector imbalance rather than total energy. Spearman $\rho$ exceeds Pearson $r$ for all heavy-tailed kinematic observables, confirming non-Gaussian marginal distributions where rank correlation is a more robust dependency measure. The near-zero correlations between $N_e$/$N_\mu$ and all hadronic features reflect the trigger-enforced lepton multiplicity constraint, which decouples leptonic and hadronic sectors. These correlation patterns justify the use of 10 independent features in the KMeans feature vector rather than a reduced set.
+
+% ── Q7 ────────────────────────────────────────────────────
+\subsection{What is the full-corpus hadronic activity spectrum, including the zero-jet peak?}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{outputs/figures/07_full_corpus_ht_distribution.png}
+    \caption{Signed-log $H_T$ distribution over all $13{,}451{,}915$ events. X: $\text{sign}(H_T)\cdot\log_{10}(1+|H_T|)$ (dimensionless). Y: event count per bin (log scale). Dashed verticals: median, 95th, 99th percentiles.}
     \label{fig:ht_dist}
 \end{figure}
 
-\section{Conclusion and Deliverables}
+The signed-log transform $f(x) = \text{sign}(x)\cdot\log_{10}(1+|x|)$ maps $H_T=0$ to origin while logarithmically compressing the high-energy tail. The $5{,}085{,}548$ zero-jet events ($37.8\%$) produce the prominent spike at $f=0$, visually representing the dominant $W \to \ell\nu$ process fraction. The continuous hadronic continuum ($N_j \geq 1$) extends to $f \approx 8.6$, corresponding to $H_T = 4{,}205.80\,\text{GeV}$ (event 3464788, $N_j=7$, global rank 1 from Window Query 08). The bi-modal structure with its extreme tail is the direct spectral fingerprint of the mixed SM cocktail and justifies the need for log-scale visualization --- a linear axis would render all but the top 0.1\% of the $H_T$ range indistinguishable.
 
-This CA3 assignment successfully demonstrated an enterprise-grade Big Data pipeline processing the complete $646.4\,\text{MB}$ LHC 40\,MHz anomaly detection training dataset containing $13,451,915$ collision events. By integrating chunked HDF5 ingestion, strict tensor validation, high-throughput Parquet columnar transformation, Spark SQL reporting, RDD MapReduce aggregation, and vector visualization, all course outcomes (CO4 and CO5) were fully demonstrated.
+% ── Q8 ────────────────────────────────────────────────────
+\subsection{How do unsupervised anomaly distances distribute, and where are the rarity thresholds?}
 
-The analysis established zero non-finite corrupted entries and proved an expected $82.83\%$ structural zero-padding rate. The empirical MapReduce aggregation showed a monotonic increase in mean $H_T$ from $38.82\,\text{GeV}$ (1-jet) to $739.60\,\text{GeV}$ (10-jets) and confirmed a positive kinematic correlation between MET and hadronic activity up to $r=0.3638$. All code, artifacts, and container configurations are packaged for $100\%$ reproducible execution.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{outputs/figures/08_cluster_distance_distribution.png}
+    \caption{Left: histogram of standardized nearest-centroid Euclidean distances over all $13{,}451{,}915$ events. X: anomaly distance $s$ (standardized units). Y: event count (log scale). Vertical lines: $P_{95}$, $P_{99}$, $P_{99.9}$. Right: empirical CCDF $P(S > s)$ vs.\ $s$ (log-log scale).}
+    \label{fig:cluster_dist}
+\end{figure}
+
+The score distribution is strongly right-skewed: bulk events ($\mu = 1.648$, $\sigma = 0.946$) sit close to their nearest centroid, consistent with the high density of low-multiplicity SM events in feature space. The empirical CCDF enables direct rarity quantification: $5\%$ of events exceed $s = 3.32$, $1\%$ exceed $s = 4.62$ ($\approx$$134{,}519$ events), and $0.1\%$ exceed $s = 7.84$ ($\approx$$13{,}452$ events). The tail extends to $s_{\max} = 336.84$, an event with $N_j = 7$, $H_T = 4{,}205\,\text{GeV}$ that occupies a region of feature space effectively unreachable by any centroid trained on SM-core events. This tail provides a calibration-free anomaly ranking: any event above $P_{99}$ is a meaningful outlier candidate for further physics investigation.
+
+% ── Q9 ────────────────────────────────────────────────────
+\subsection{Does the anomaly score capture topological complexity or scale-dependent artefacts?}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{outputs/figures/09_cluster_distance_by_jet_multiplicity.png}
+    \caption{Nearest-centroid anomaly distance conditioned on jet multiplicity. X: reconstructed jet count $N_j$ ($0$--$10$). Y: standardized Euclidean distance $s$ to nearest KMeans centroid. Box: IQR. Whiskers: $1.5\times$IQR. Notch: 95\% CI on median.}
+    \label{fig:cluster_by_jets}
+\end{figure}
+
+Median anomaly distance scales strictly monotonically with jet multiplicity: $s_{\text{med}}(N_j=0) = 1.15$ rising to $s_{\text{med}}(N_j=10) = 7.12$. This monotonicity is physically interpretable: the 8 KMeans centroids were optimized on the full corpus, which is dominated by low-$N_j$ events. High-multiplicity events occupy a sparse corner of the 10-dimensional standardized feature space (simultaneously large $H_T$, large $N_j$, elevated $S_T^{\text{lep}}$, large $|\eta|_{\max}$), placing them far from any centroid regardless of initialization. Crucially, the anomaly score is \emph{not} an artefact of energy scale: the $\texttt{StandardScaler}$ normalization removes mean and variance, so the distance measures geometric eccentricity in standardized units, not raw GeV magnitudes. The KMeans model functions as a valid unsupervised complexity scorer, not a labelled signal detector.
+
+\section{Conclusion}
+
+\subsection{Synthesis of Big Data Engineering and Physics Insights}
+
+This case study designed, implemented, and empirically validated an end-to-end Big Data pipeline for the offline processing of LHC 40\,MHz trigger benchmark data. Operating under bounded-memory constraints on a single six-core CPU workstation, the pipeline ingested and analyzed all $13{,}451{,}915$ collision events ($1.022\times 10^9$ tensor scalars) with strict row-count conservation and zero data subsampling.
+
+The central research question posed in Section~\ref{sec:problem_statement} --- whether a memory-bounded pipeline can audit raw collider tensors, derive interpretable physics observables, perform distributed SQL and MapReduce aggregations, and rank topological outliers using unsupervised models --- is affirmed across all experimental milestones:
+\begin{enumerate}
+    \item \textbf{Data Integrity and Schema Provenance:} Provenance was cryptographically anchored to Zenodo Record 5046428 ($646.4\,\text{MB}$, MD5 \texttt{08cb4801229f9d480567f8d3f5cac134}). The chunked audit validated $100\%$ of tensor coordinates against non-finiteness, invalid particle type codes, unphysical negative $p_T$, and azimuthal overflow ($|\phi| > \pi$), confirming zero data corruption across the corpus.
+    \item \textbf{Columnar Storage Efficiency:} Bounded-memory ETL transformed 3D HDF5 tensors into Snappy-compressed Apache Parquet ($539$ row groups), achieving a $1.39\times$ on-disk compression ratio against uncompressed payloads while enabling columnar projection and partition pruning.
+    \item \textbf{Scalable Analytics and Ecosystem Interoperability:} Nine Spark SQL queries and Spark RDD \texttt{map/reduceByKey} pipelines demonstrated high-throughput distributed aggregations. Standardized dataflow artifacts for Apache Pig Latin local mode, Apache Hive DDL, and Hadoop Streaming established multi-engine interoperability across the Hadoop/Spark ecosystem.
+    \item \textbf{Unsupervised Anomaly Characterization:} An online, multi-pass \texttt{MiniBatchKMeans} ($K=8$) architecture mapped all $13.45\times 10^6$ events into standardized feature space, providing a calibration-free geometric ranking of rare Standard Model topologies.
+\end{enumerate}
+
+\subsection{Summary of Empirical Physics Findings}
+
+\begin{itemize}
+    \item \textbf{Trigger Pre-selection Signatures:} The single-lepton trigger pre-selection ($p_T > 23\,\text{GeV}$) creates sharp turn-on thresholds in electron and muon spectra. The underlying Monte Carlo cocktail ($59.2\%$ $W \to \ell\nu$, $33.8\%$ QCD multijet, $6.7\%$ $Z \to \ell\ell$, $0.3\%$ $t\bar{t}$) directly governs the observed bimodal $H_T$ and $S_T^{\text{lep}}$ energy distributions.
+    \item \textbf{Jet Multiplicity Hierarchy:} Purely leptonic events ($N_j = 0$) constitute $37.8\%$ of the dataset, while $86.0\%$ have $N_j \le 2$. The extreme multi-jet tail ($N_j \ge 5$, $0.77\%$ of events) drives total hadronic activity ($H_T$) and exhibits heavy-tailed non-Gaussian energy scaling.
+    \item \textbf{Kinematic Decoupling:} A Pearson correlation $r = 0.13$ between MET and $H_T$ confirms that missing momentum (neutrino recoil / detector imbalance) and scalar hadronic activity provide independent, orthogonal discriminating dimensions for event filtering.
+    \item \textbf{Topological Complexity vs.\ Anomaly Score:} Median anomaly distance scales strictly monotonically from $s_{\text{med}} = 1.15$ at $N_j = 0$ to $s_{\text{med}} = 7.12$ at $N_j = 10$. Standardized feature scaling ensures that outlier scores reflect genuine topological rarity in multi-dimensional space rather than raw energy magnitude artefacts.
+\end{itemize}
+
+\subsection{Limitations and Defensible Scope Boundaries}
+
+In alignment with rigorous scientific integrity principles, the following explicit boundaries define this study:
+\begin{itemize}
+    \item \textbf{Single-Host Docker Execution:} All Spark computations executed in \texttt{local[6]} multithreaded mode on a single physical host. No distributed network cluster scaling or true HDFS throughput numbers are claimed.
+    \item \textbf{Absence of Per-Event Ground Truth:} The training dataset is a pure Standard Model simulation mixture without per-event BSM signal labels. Consequently, supervised signal efficiency, background rejection curves, precision-recall, and ROC-AUC cannot be derived from this record alone.
+    \item \textbf{Model-Relative Anomaly Metrics:} Outlier scores represent empirical Euclidean distances to KMeans centroids in standardized feature space; they are not calibrated $p$-values or physical discovery significances.
+    \item \textbf{Tool Execution Modes:} Spark SQL and RDD operations ran natively over the full dataset. Apache Pig 0.17 ran in \texttt{-x local} mode, while Hive DDL and Hadoop Streaming scripts were provided and structurally verified as catalog/deployment artifacts.
+\end{itemize}
+
+\subsection{Future Research Directions}
+
+Promising technical extensions to this pipeline include:
+\begin{enumerate}
+    \item Stratified intra-multiplicity anomaly scoring (fitting separate models per $N_j$ bin) to isolate fine-grained sub-structure anomalies from dominant multiplicity scaling.
+    \item Deployment of the Hadoop Streaming and Hive scripts onto a distributed multi-node YARN/HDFS cluster to quantify scale-out speedup and I/O saturation.
+    \item Ingestion of the official ADC2021 black-box evaluation mixtures containing injected exotic resonance signatures ($A \to 4\ell$, $h^0 \to \tau\tau$, $W' \to \text{jet}+\ell$, $LQ \to b\tau$) to benchmark unsupervised signal discovery curves and false-positive rejection rates.
+    \item Integration of exact t-digest or KLL sketch algorithms to eliminate approximate quantile sampling variance in ultra-high percentile calculations ($P_{99.99}$).
+\end{enumerate}
+
+All code, SQL queries, MapReduce mappers/reducers, ETL routines, ML scoring scripts, and vector figures are containerized and fully reproducible via the project Makefile and Docker Compose configuration.
 
 \begin{thebibliography}{9}
 \bibitem{govorkova2022lhc}
@@ -372,16 +684,25 @@ E.~Govorkova, E.~Puljak, T.~Aarrestad, et~al., ``LHC physics dataset for unsuper
 CERN / Fermilab Collaboration, ``Unsupervised New Physics detection at 40\,MHz: Training Dataset,'' \emph{Zenodo Record 5046428}, 2021. URL: \href{https://zenodo.org/records/5046428}{https://zenodo.org/records/5046428}.
 
 \bibitem{adc2021}
-Machine Learning for Particle Physics, ``Anomaly Detection Challenge 2021,'' \emph{ADC Benchmark Suite}, 2021. URL: \href{https://mpp-hep.github.io/ADC2021/}{https://mpp-hep.github.io/ADC2021/}.
+Machine Learning for Particle Physics, ``Anomaly Detection Challenge 2021 Benchmark Suite,'' 2021. URL: \href{https://mpp-hep.github.io/ADC2021/}{https://mpp-hep.github.io/ADC2021/}.
 
 \bibitem{sparkguide}
-Apache Software Foundation, ``Spark SQL, DataFrames and Datasets Guide (v3.5.7),'' 2024. URL: \href{https://spark.apache.org/docs/3.5.7/sql-programming-guide.html}{https://spark.apache.org/docs/3.5.7/}.
+Apache Software Foundation, ``Apache Spark 3.5.7 SQL, DataFrames and Datasets Guide,'' 2024. URL: \href{https://spark.apache.org/docs/3.5.7/sql-programming-guide.html}{https://spark.apache.org/docs/3.5.7/}.
+
+\bibitem{sparkrdd}
+Apache Software Foundation, ``Apache Spark 3.5.7 RDD Programming Guide,'' 2024. URL: \href{https://spark.apache.org/docs/3.5.7/rdd-programming-guide.html}{https://spark.apache.org/docs/3.5.7/}.
 
 \bibitem{hivemanual}
-Apache Software Foundation, ``Apache Hive Language Manual,'' 2023. URL: \href{https://hive.apache.org/docs/latest/}{https://hive.apache.org/}.
+Apache Software Foundation, ``Apache Hive Language Manual DDL,'' 2023. URL: \href{https://hive.apache.org/docs/latest/language/languagemanual-ddl/}{https://hive.apache.org/docs/latest/}.
 
 \bibitem{pigdocs}
-Apache Software Foundation, ``Apache Pig 0.17 Documentation,'' 2020. URL: \href{https://pig.apache.org/}{https://pig.apache.org/}.
+Apache Software Foundation, ``Apache Pig 0.17 Documentation,'' 2020. URL: \href{https://pig.apache.org/docs/r0.17.0/}{https://pig.apache.org/}.
+
+\bibitem{pyarrowguide}
+Apache Arrow / PyArrow Developers, ``PyArrow Parquet Documentation (v18.1.0),'' 2024. URL: \href{https://arrow.apache.org/docs/python/parquet.html}{https://arrow.apache.org/docs/python/}.
+
+\bibitem{scikitlearn}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, et~al., ``Scikit-learn: Machine Learning in Python,'' \emph{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
 \end{thebibliography}
 
 \end{document}

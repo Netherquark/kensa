@@ -1,0 +1,42 @@
+services:
+  ca3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ca3-40mhz:1.0
+    working_dir: /workspace
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      HOME: /tmp
+      SPARK_LOCAL_IP: 127.0.0.1
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+      SPARK_DRIVER_MEMORY: ${SPARK_DRIVER_MEMORY:-6g}
+      SPARK_SHUFFLE_PARTITIONS: ${SPARK_SHUFFLE_PARTITIONS:-12}
+      ETL_CHUNK_ROWS: ${ETL_CHUNK_ROWS:-25000}
+    volumes:
+      - ./data:/workspace/data
+      - ./outputs:/workspace/outputs
+      - ./audit:/workspace/audit
+      - ./scripts:/workspace/scripts
+      - ./sql:/workspace/sql
+    shm_size: "1gb"
+    mem_limit: 10g
+    init: true
+    command: ["help"]
+
+  # Optional Apache Pig local-mode adapter. Legacy component; separate build/run.
+  pig:
+    profiles: ["pig"]
+    build:
+      context: .
+      dockerfile: Dockerfile.pig
+    image: ca3-40mhz-pig:0.17
+    working_dir: /workspace
+    volumes:
+      - ./data:/workspace/data
+      - ./outputs:/workspace/outputs
+      - ./pig:/workspace/pig:ro
+    command: ["bash", "-lc", "echo 'Run: docker compose --profile pig run --rm pig analyze' && sleep infinity"]
+    init: true

@@ -18,9 +18,10 @@ DEFAULT_FEATURES=ROOT/"data/processed/events.parquet"
 DEFAULT_ML=ROOT/"outputs/ml/cluster_scores.parquet"
 DEFAULT_OUT=ROOT/"outputs/figures"
 
-# Style configuration
+# Style configuration -- Material Design 3 Baseline Palette
 plt.rcParams.update({
-    "font.family": "serif",
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Roboto", "Liberation Sans", "DejaVu Sans"],
     "font.size": 10,
     "axes.labelsize": 11,
     "axes.titlesize": 12,
@@ -30,16 +31,29 @@ plt.rcParams.update({
     "figure.titlesize": 13,
     "figure.dpi": 200,
     "savefig.dpi": 300,
+    "figure.facecolor": "#FEF7FF",       # MD3 Surface
+    "axes.facecolor": "#F3EDF7",         # MD3 SurfaceContainerLow
+    "axes.edgecolor": "#79747E",         # MD3 Outline
     "axes.grid": True,
-    "grid.alpha": 0.25,
-    "grid.linestyle": "--",
+    "grid.color": "#CAC4D0",             # MD3 OutlineVariant
+    "grid.alpha": 0.45,
+    "grid.linestyle": ":",
 })
 
-PRIMARY = "#102C57"
-SECONDARY = "#3565A9"
-ACCENT = "#DAA520"
-DANGER = "#D9534F"
-SUCCESS = "#5CB85C"
+# MD3 Baseline Color Roles
+PRIMARY = "#6750A4"           # MD3 Primary
+PRIMARY_CONTAINER = "#EADDFF" # MD3 PrimaryContainer
+SECONDARY = "#625B71"         # MD3 Secondary
+SECONDARY_CONTAINER = "#E8DEF8"
+TERTIARY = "#7D5260"          # MD3 Tertiary
+TERTIARY_CONTAINER = "#FFD8E4"
+ACCENT = "#7D5260"            # mapped to Tertiary
+DANGER = "#B3261E"            # MD3 Error
+SUCCESS = "#2E6B38"           # MD3 Semantic Success (green tonal)
+SURFACE = "#FEF7FF"
+SURFACE_CONTAINER = "#ECE6F0"
+TEXT_PRIMARY = "#1D1B20"      # MD3 OnSurface
+TEXT_SECONDARY = "#49454F"    # MD3 OnSurfaceVariant
 
 
 def save(fig, path: Path):

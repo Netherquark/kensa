@@ -151,6 +151,18 @@ xelatex -interaction=nonstopmode -output-directory=docs docs/CA3_REPORT.tex
 
 The PDF lands at `docs/CA3_REPORT.pdf`. Empirical tables and figures appear only when `outputs/report_generated_results.tex` and `outputs/figures/` exist; otherwise the source uses its conditional fallback text.
 
+## Presentation PDF
+
+Compile the CA3 presentation deck from the repository root with XeLaTeX:
+
+```bash
+# Run twice so Beamer section tokens and page numbers resolve:
+xelatex -interaction=nonstopmode -output-directory=docs docs/CA3_PRESENTATION.tex
+xelatex -interaction=nonstopmode -output-directory=docs docs/CA3_PRESENTATION.tex
+```
+
+The presentation slides land at `docs/CA3_PRESENTATION.pdf` (16:9 widescreen layout styled according to Material Design 3 guidelines).
+
 ## Reproducibility and citations
 
 See `docs/INSTALL_LINUX.md`, `docs/DATA_DICTIONARY.md`, `docs/ARCHITECTURE.md`, `docs/VIVA_NOTES.md`, and `docs/CA3_REPORT_DRAFT_ULTRA.md`. The CA3 draft is checked by `quality/guardrail27_check.py`; its machine-readable metrics and check outcomes are stored in `quality/guardrail27.json`. The checker measures explicit lexical, structural and formatting proxies, plus records separate editorial review items. No automated metric proves scientific truth or subjective writing quality.

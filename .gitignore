@@ -12,3 +12,9 @@ audit/**
 .DS_Store
 .env
 .log
+*.aux
+*.log
+*.nav
+*.snm
+*.toc
+*.out

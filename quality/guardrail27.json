@@ -1,7 +1,7 @@
 {
   "schema": "guardrail27.generic.v1",
-  "generated_at_utc": "2026-10-12T17:31:14.615764+00:00",
-  "document": "/home/netherquark/Soham/Large_code/sources/Netherquark/kensa/docs/CA3_REPORT.tex",
+  "generated_at_utc": "2026-10-12T21:48:00.360178+00:00",
+  "document": "/home/netherquark/Soham/Large_code/sources/Netherquark/kensa/docs/CA3_PRESENTATION.tex",
   "overall_status": "PASS",
   "checks_passed": 8,
   "checks_failed": 0,
@@ -28,7 +28,7 @@
       "check": "lexical_diversity_mtld",
       "status": "PASS",
       "observed": {
-        "mtld": 142.6
+        "mtld": 45.65
       },
       "requirement": "Maintain healthy lexical diversity (MTLD >= 40).",
       "severity": "warn"
@@ -37,7 +37,7 @@
       "check": "hapax_ratio",
       "status": "PASS",
       "observed": {
-        "hapax_ratio": 0.519
+        "hapax_ratio": 0.629
       },
       "requirement": "High Hapax Legomena ratio through low-frequency vocabulary.",
       "severity": "warn"
@@ -46,7 +46,7 @@
       "check": "yules_k_low",
       "status": "PASS",
       "observed": {
-        "yules_k": 68.2
+        "yules_k": 47.5
       },
       "requirement": "Keep Yule's K low to avoid concentrated vocabulary reuse.",
       "severity": "warn"
@@ -55,7 +55,7 @@
       "check": "sentence_length_variation",
       "status": "PASS",
       "observed": {
-        "cv": 0.577
+        "cv": 1.536
       },
       "requirement": "Vary sentence length significantly across the document.",
       "severity": "warn"
@@ -64,7 +64,7 @@
       "check": "paragraph_length_variation",
       "status": "PASS",
       "observed": {
-        "cv": 1.087
+        "cv": 0.79
       },
       "requirement": "Vary paragraph length across the document.",
       "severity": "warn"
@@ -73,22 +73,22 @@
       "check": "unique_sections",
       "status": "PASS",
       "observed": {
-        "section_count": 15,
-        "unique_count": 15
+        "section_count": 8,
+        "unique_count": 8
       },
       "requirement": "Each section title and content block must be unique and non-redundant.",
       "severity": "error"
     }
   ],
   "metrics": {
-    "total_tokens": 3328,
-    "vocab_size": 1002,
-    "type_token_ratio": 0.3011,
-    "mtld": 142.6,
-    "hapax_ratio": 0.519,
-    "yules_k": 68.2,
-    "character_entropy": 4.8442,
-    "sentence_length_cv": 0.5768,
-    "paragraph_length_cv": 1.0866
+    "total_tokens": 1287,
+    "vocab_size": 607,
+    "type_token_ratio": 0.4716,
+    "mtld": 45.65,
+    "hapax_ratio": 0.6293,
+    "yules_k": 47.5,
+    "character_entropy": 5.1627,
+    "sentence_length_cv": 1.5362,
+    "paragraph_length_cv": 0.7904
   }
 }

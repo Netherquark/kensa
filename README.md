@@ -139,6 +139,18 @@ The corpus contains simulated 13 TeV proton-proton collision events with an elec
 
 An unusual score may result from a rare Standard Model topology, reconstruction behaviour, selection effects, schema quality or feature scaling. Physics interpretation requires expert review and a labelled validation sample.
 
+## Report PDF
+
+Compile the CA3 report from the repository root with XeLaTeX (the source references `docs/figures/` and `outputs/` relative to the root):
+
+```bash
+# Run twice so cross-references and the generated-results input resolve.
+xelatex -interaction=nonstopmode -output-directory=docs docs/CA3_REPORT.tex
+xelatex -interaction=nonstopmode -output-directory=docs docs/CA3_REPORT.tex
+```
+
+The PDF lands at `docs/CA3_REPORT.pdf`. Empirical tables and figures appear only when `outputs/report_generated_results.tex` and `outputs/figures/` exist; otherwise the source uses its conditional fallback text.
+
 ## Reproducibility and citations
 
 See `docs/INSTALL_LINUX.md`, `docs/DATA_DICTIONARY.md`, `docs/ARCHITECTURE.md`, `docs/VIVA_NOTES.md`, and `docs/CA3_REPORT_DRAFT_ULTRA.md`. The CA3 draft is checked by `quality/guardrail27_check.py`; its machine-readable metrics and check outcomes are stored in `quality/guardrail27.json`. The checker measures explicit lexical, structural and formatting proxies, plus records separate editorial review items. No automated metric proves scientific truth or subjective writing quality.

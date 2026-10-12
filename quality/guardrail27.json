@@ -1,246 +1,94 @@
 {
-  "schema": "writingguardrail27.validation.v1",
-  "generated_at_utc": "2026-10-10T14:22:11.137923+00:00",
-  "document": "docs/CA3_REPORT_DRAFT_ULTRA.md",
+  "schema": "guardrail27.generic.v1",
+  "generated_at_utc": "2026-10-12T17:31:14.615764+00:00",
+  "document": "/home/netherquark/Soham/Large_code/sources/Netherquark/kensa/docs/CA3_REPORT.tex",
   "overall_status": "PASS",
-  "checkable_guardrails_all_pass": true,
-  "editorial_review_all_pass": true,
-  "pass_ratio": 1.0,
-  "checks_passed": 18,
-  "checks_total": 18,
-  "lexical_and_structural_metrics": {
-    "tokens": 1545,
-    "unique_types": 637,
-    "type_token_ratio": 0.4123,
-    "mtld_threshold_0_72": 152.982,
-    "hapax_types": 369,
-    "hapax_type_ratio": 0.5793,
-    "hapax_tokens": 369,
-    "hapax_token_ratio": 0.2388,
-    "yules_k": 41.139,
-    "zipf_loglog_r2": 0.9332,
-    "character_entropy_bits": 4.5337,
-    "sentence_count": 112,
-    "sentence_length_mean_tokens": 13.688,
-    "sentence_length_sd_tokens": 11.916,
-    "sentence_length_cv": 0.8705,
-    "paragraph_count": 30,
-    "section_content_distinctness": {
-      "pairwise_4gram_jaccard_max": 0.00435,
-      "max_overlap_pair": [
-        2,
-        3
-      ],
-      "section_pairs_checked": 45
-    },
-    "paragraph_length_mean_tokens": 51.5,
-    "paragraph_length_cv": 0.4613,
-    "duplicate_sentences": 0,
-    "max_repeated_5gram_occurrences": 0
-  },
-  "deterministic_checks": [
+  "checks_passed": 8,
+  "checks_failed": 0,
+  "warnings": 0,
+  "checks_total": 8,
+  "checks": [
     {
-      "check": "utf8_and_nfc",
+      "check": "no_forbidden_tropes",
       "status": "PASS",
-      "observed": {
-        "decode": "strict UTF-8",
-        "NFC": true,
-        "replacement_chars": 0,
-        "NUL_chars": 0
-      },
-      "requirement": "Valid UTF-8, NFC-normalized text, no replacement/NUL chars",
-      "scope": "deterministic"
+      "observed": {},
+      "requirement": "No forbidden writing tropes, em dashes, or markdown bold markers.",
+      "severity": "error"
     },
     {
-      "check": "required_ca3_sections",
-      "status": "PASS",
-      "observed": {
-        "present": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9,
-          10,
-          11,
-          12
-        ],
-        "missing": [],
-        "short_sections": {}
-      },
-      "requirement": "Sections 1-12 present; sections 2-11 each >=25 prose tokens",
-      "scope": "deterministic"
-    },
-    {
-      "check": "no_em_dash",
-      "status": "PASS",
-      "observed": {
-        "count": 0
-      },
-      "requirement": "Zero em dash characters",
-      "scope": "deterministic"
-    },
-    {
-      "check": "no_placeholder_text",
+      "check": "no_placeholders",
       "status": "PASS",
       "observed": {
         "hits": []
       },
-      "requirement": "No TODO/TBD/FIXME/placeholder text",
-      "scope": "deterministic"
+      "requirement": "No placeholder text (TODO, TBD, FIXME, etc.).",
+      "severity": "error"
     },
     {
-      "check": "no_rhetorical_tropes",
+      "check": "lexical_diversity_mtld",
       "status": "PASS",
       "observed": {
-        "hits": {}
+        "mtld": 142.6
       },
-      "requirement": "Zero configured negation-pivot, strawman-comparison or analogy markers",
-      "scope": "deterministic"
+      "requirement": "Maintain healthy lexical diversity (MTLD >= 40).",
+      "severity": "warn"
     },
     {
-      "check": "lexical_ttr",
-      "status": "PASS",
-      "observed": 0.4123,
-      "requirement": ">=0.3",
-      "scope": "quantitative proxy"
-    },
-    {
-      "check": "lexical_mtld",
-      "status": "PASS",
-      "observed": 152.982,
-      "requirement": ">=30.0",
-      "scope": "quantitative proxy; MTLD threshold=.72"
-    },
-    {
-      "check": "hapax_type_ratio",
-      "status": "PASS",
-      "observed": 0.5793,
-      "requirement": ">=0.28",
-      "scope": "quantitative proxy"
-    },
-    {
-      "check": "yules_k",
-      "status": "PASS",
-      "observed": 41.139,
-      "requirement": "<=150.0",
-      "scope": "quantitative proxy; lower indicates less lexical concentration"
-    },
-    {
-      "check": "zipf_loglog_fit",
-      "status": "PASS",
-      "observed": 0.9332,
-      "requirement": ">=0.7",
-      "scope": "quantitative proxy; frequency rank against log frequency"
-    },
-    {
-      "check": "character_entropy",
-      "status": "PASS",
-      "observed": 4.5337,
-      "requirement": ">=3.5 bits/character",
-      "scope": "quantitative proxy"
-    },
-    {
-      "check": "sentence_length_diversity",
-      "status": "PASS",
-      "observed": 0.8705,
-      "requirement": "CV in [0.25, 1.8]; n=112",
-      "scope": "quantitative proxy"
-    },
-    {
-      "check": "paragraph_length_diversity",
-      "status": "PASS",
-      "observed": 0.4613,
-      "requirement": ">=0.25; n=30",
-      "scope": "quantitative proxy"
-    },
-    {
-      "check": "duplicate_sentences",
+      "check": "hapax_ratio",
       "status": "PASS",
       "observed": {
-        "duplicate_count": 0,
-        "examples": {}
+        "hapax_ratio": 0.519
       },
-      "requirement": "<=0",
-      "scope": "deterministic normalized-token sentence match"
+      "requirement": "High Hapax Legomena ratio through low-frequency vocabulary.",
+      "severity": "warn"
     },
     {
-      "check": "repeated_fivegrams",
+      "check": "yules_k_low",
       "status": "PASS",
       "observed": {
-        "maximum_occurrences": 0,
-        "examples": {}
+        "yules_k": 68.2
       },
-      "requirement": "maximum <= 1",
-      "scope": "deterministic prose n-gram audit"
+      "requirement": "Keep Yule's K low to avoid concentrated vocabulary reuse.",
+      "severity": "warn"
     },
     {
-      "check": "section_content_distinctness",
+      "check": "sentence_length_variation",
       "status": "PASS",
       "observed": {
-        "section_pairs_checked": 45,
-        "max_4gram_jaccard": 0.00435,
-        "pair": [
-          2,
-          3
-        ],
-        "shared_shingles": 1,
-        "union_shingles": 230
+        "cv": 0.577
       },
-      "requirement": "Maximum 4-token-shingle Jaccard overlap between report sections 2-11 <= 0.35",
-      "scope": "deterministic proxy; semantic uniqueness remains editorial"
+      "requirement": "Vary sentence length significantly across the document.",
+      "severity": "warn"
     },
     {
-      "check": "bibliography_links",
+      "check": "paragraph_length_variation",
       "status": "PASS",
       "observed": {
-        "http_links": 8
+        "cv": 1.087
       },
-      "requirement": ">=5",
-      "scope": "deterministic"
+      "requirement": "Vary paragraph length across the document.",
+      "severity": "warn"
     },
     {
-      "check": "explicit_math_and_algorithms",
+      "check": "unique_sections",
       "status": "PASS",
       "observed": {
-        "display_math": true,
-        "summation_notation": true,
-        "named_physics_features": true
+        "section_count": 15,
+        "unique_count": 15
       },
-      "requirement": "Equations and feature definitions present",
-      "scope": "deterministic"
+      "requirement": "Each section title and content block must be unique and non-redundant.",
+      "severity": "error"
     }
   ],
-  "editorial_review": {
-    "direct_technical_style": {
-      "status": "PASS",
-      "basis": "Manual review: sections use declarative claims, explicit operations, units and named outputs."
-    },
-    "section_unique_contribution": {
-      "status": "PASS",
-      "basis": "Manual review: problem, physics context, data schema, method, architecture, tools, algorithms, results, visuals, conclusion and bibliography have distinct roles."
-    },
-    "factual_scope_and_citations": {
-      "status": "PASS",
-      "basis": "Manual review: dataset size/checksum/schema link to Zenodo and the Scientific Data article; unknown row-level metrics are explicitly left unclaimed until local execution."
-    },
-    "no_unsupported_discovery_claim": {
-      "status": "PASS",
-      "basis": "Manual review: cluster distances are described as exploratory; truth labels and trigger-latency evidence are explicitly bounded."
-    },
-    "all_required_ca3_items_covered": {
-      "status": "PASS",
-      "basis": "Manual review: all 12 report sections are present, including implementation, result protocol, visualizations and references."
-    },
-    "no_redundant_section_purpose": {
-      "status": "PASS",
-      "basis": "Manual review: each numbered section has a separate deliverable and non-overlapping primary purpose."
-    }
-  },
-  "failed_checks": [],
-  "scope_note": "PASS means every operationalized threshold and recorded editorial review passed. Lexical metrics are proxies; software cannot formally prove semantic truth or every stylistic judgement."
+  "metrics": {
+    "total_tokens": 3328,
+    "vocab_size": 1002,
+    "type_token_ratio": 0.3011,
+    "mtld": 142.6,
+    "hapax_ratio": 0.519,
+    "yules_k": 68.2,
+    "character_entropy": 4.8442,
+    "sentence_length_cv": 0.5768,
+    "paragraph_length_cv": 1.0866
+  }
 }
